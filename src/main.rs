@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
+use logstream::config::{AppConfig, discover_config_path};
 use std::path::PathBuf;
-
 #[derive(Debug, Parser)]
 #[command(name = "logstream")]
 #[command(about = "Realtime streaming log analyzer")]
@@ -63,7 +63,24 @@ fn main() -> Result<()> {
             println!("sessions command");
         }
         Command::Config { command } => {
-            println!("config command: {:?}", command);
+            config_command(command)?;
+        }
+    }
+    Ok(())
+}
+
+fn config_command(command: ConfigCommand) -> Result<()> {
+    match command {
+        ConfigCommand::Show { path } => {
+            let path = path
+                .or_else(discover_config_path)
+                .ok_or_else(|| anyhow::anyhow!("config path was not provided"))?;
+            let config = AppConfig::load(&path)?;
+            println!("{}", serde_yaml::to_string(&config)?);
+        }
+        ConfigCommand::Init { path } => {
+            AppConfig::write_default(&path)?;
+            println!("config written to {}", path.display());
         }
     }
     Ok(())

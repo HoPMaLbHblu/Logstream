@@ -1,0 +1,21 @@
+format: "{timestamp?} {level} {message} {fields}"
+workers: 4
+read_from_end: false
+poll_interval_ms: 500
+retained_events: 500
+filters:
+  levels: ["INFO", "WARN", "ERROR"]
+  keyword: null
+  source: null
+report:
+  path: reports/logstream-report.txt
+  flush_interval_seconds: 10
+rules:
+  - name: error-burst
+    condition:
+      level: ERROR
+      keyword: null
+      source: null
+    action: warn
+    threshold: 5
+    window_seconds: 30
