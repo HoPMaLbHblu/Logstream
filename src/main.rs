@@ -1,6 +1,8 @@
 use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
 use logstream::config::{AppConfig, discover_config_path};
+use logstream::report::{render_report, write_report};
+use logstream::session::SessionStore;
 use std::path::PathBuf;
 #[derive(Debug, Parser)]
 #[command(name = "logstream")]
@@ -57,14 +59,52 @@ fn main() -> Result<()> {
             println!("start command: {:?}", args);
         }
         Command::Stats(args) => {
-            println!("stats command: {:?}", args);
+            stats_command(args)?;
         }
         Command::Sessions => {
-            println!("sessions command");
+            sessions_command()?;
         }
         Command::Config { command } => {
             config_command(command)?;
         }
+    }
+    Ok(())
+}
+
+fn stats_command(args: StatsArgs) -> Result<()> {
+    let store = SessionStore::default()?;
+    let session = store.load(&args.session)?;
+    let Some(snapshot) = session.last_stats.as_ref() else {
+        println!("session '{}' does not contain statistics yet", session.name);
+        return Ok(());
+    };
+    println!("{}", render_report(snapshot));
+    if let Some(path) = args.report.as_ref() {
+        write_report(path, snapshot)?;
+        println!("report written to {}", path.display());
+    }
+    Ok(())
+}
+
+fn sessions_command() -> Result<()> {
+    let store = SessionStore::default()?;
+    let sessions = store.list()?;
+    if sessions.is_empty() {
+        println!("no sessions found in {}", store.root().display());
+        return Ok(());
+    }
+    for session in sessions {
+        println!(
+            "{} | updated={} | files={}",
+            session.name,
+            session.updated_at,
+            session
+                .files
+                .iter()
+                .map(|path| path.display().to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
     }
     Ok(())
 }
