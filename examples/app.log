@@ -1,0 +1,6 @@
+2026-05-27T09:00:15Z INFO boot complete service=core source=system
+2026-05-27T09:00:16Z INFO user logged in service=auth user=admin source=gateway
+2026-05-27T09:00:17Z WARN slow request service=api path=/login latency=850 source=nginx
+2026-05-27T09:00:18Z ERROR login failed service=auth user=admin source=gateway
+2026-05-27T09:00:19Z ERROR database unavailable service=orders source=worker error=timeout
+2026-05-27T09:00:20Z INFO user logged in service=auth user=admin source=gateway

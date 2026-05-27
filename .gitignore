@@ -1,1 +1,7 @@
 /target
+/.logstream-session
+/examples
+/logstream-*.log
+*Cargo.lock
+*Cargo.toml
+*Guide.md

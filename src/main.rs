@@ -1,8 +1,10 @@
 use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
 use logstream::config::{AppConfig, discover_config_path};
+use logstream::pipeline::{AppChannels, AppEvent, ShutdownToken, start_pipeline};
 use logstream::report::{render_report, write_report};
-use logstream::session::SessionStore;
+use logstream::session::{Session, SessionStore};
+use logstream::ui::run_tui;
 use std::path::PathBuf;
 #[derive(Debug, Parser)]
 #[command(name = "logstream")]
@@ -51,12 +53,12 @@ enum ConfigCommand {
     Show { path: Option<PathBuf> },
     Init { path: PathBuf },
 }
-
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Command::Start(args) => {
-            println!("start command: {:?}", args);
+            start_command(args).await?;
         }
         Command::Stats(args) => {
             stats_command(args)?;
@@ -68,6 +70,73 @@ fn main() -> Result<()> {
             config_command(command)?;
         }
     }
+    Ok(())
+}
+async fn start_command(args: StartArgs) -> Result<()> {
+    let config_path = args.config.clone().or_else(discover_config_path);
+    let config = AppConfig::load_optional(config_path.as_deref())?;
+    let report_path = args.report.clone().or_else(|| {
+        config
+            .report
+            .as_ref()
+            .and_then(|report| report.path.clone())
+    });
+    let mut session = Session::new(
+        args.session.clone(),
+        args.files.clone(),
+        config_path,
+        config.clone(),
+        report_path.clone(),
+    );
+    if session.files.is_empty() {
+        anyhow::bail!("provide at least one log file");
+    }
+
+    let channels = AppChannels::new(4096);
+    let shutdown = ShutdownToken::new();
+    let pipeline =
+        start_pipeline(session.files.clone(), config, channels.clone(), shutdown).await?;
+
+    if args.no_tui {
+        run_console(pipeline, &mut session).await?;
+    } else {
+        run_tui(pipeline, &mut session).await?;
+    }
+    SessionStore::default()?.save(&session)?;
+    println!("session saved as {}", session.name);
+    Ok(())
+}
+
+async fn run_console(
+    pipeline: logstream::pipeline::PipelineHandle,
+    session: &mut Session,
+) -> Result<()> {
+    println!("analysis started. press Ctrl+C to stop.");
+    let mut events = pipeline.channels.subscribe();
+    loop {
+        tokio::select! {
+            event = events.recv() => {
+                match event {
+                    Ok(AppEvent::Entry(entry)) => println!("{}", entry.compact()),
+                    Ok(AppEvent::Alert(alert)) => eprintln!("ALERT {}", alert.compact()),
+                   Ok(AppEvent::Status(status)) => eprintln!("status: {status}"),
+                    Ok(AppEvent::Error(error)) => eprintln!("error: {error}"),
+                    Err(_) => break,
+                }
+            }
+            signal = tokio::signal::ctrl_c() => {
+                signal?;
+                break;
+            }
+        }
+    }
+    let final_stats = pipeline.stop().await;
+    let snapshot = final_stats.snapshot();
+    if let Some(path) = session.report_path.as_ref() {
+        write_report(path, &snapshot)?;
+        println!("report written to {}", path.display());
+    }
+    session.set_stats(snapshot);
     Ok(())
 }
 

@@ -1,0 +1,4 @@
+INFO auth service ready service=auth source=auth-service env=prod node=auth-01
+2026-05-27T09:00:16Z INFO login succeeded service=auth source=auth-service user=alice ip=10.10.0.21 method=password request_id=auth-5001
+2026-05-27T09:00:17Z ERROR login failed service=auth source=auth-service user=admin ip=185.71.66.10 reason=bad_password request_id=auth-5002
+2026-05-27T09:00:18Z ERROR login failed service=auth source=auth-service user=admin ip=185.71.66.10 reason=bad_password request_id=auth-5004

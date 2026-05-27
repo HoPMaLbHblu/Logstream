@@ -1,5 +1,0 @@
-INFO boot complete service=core source=system
-INFO user logged in service=auth user=admin source=gateway
-WARN slow request service=api path=/login latency=850 source=nginx
-ERROR login failed service=auth user=admin source=gateway
-ERROR database unavailable service=orders source=worker error=timeout

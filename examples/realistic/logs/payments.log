@@ -1,0 +1,4 @@
+2026-05-27T09:00:15Z INFO payment worker ready service=billing source=payment-service env=prod provider=stripe
+2026-05-27T09:00:16Z INFO payment authorized service=billing source=payment-service user_id=42 amount=1990 currency=RUB provider=stripe payment_id=pay-7001
+2026-05-27T09:00:17Z WARN provider latency high service=billing source=payment-service provider=stripe latency_ms=1200 payment_id=pay-7002
+2026-05-27T09:00:18Z ERROR payment timeout service=billing source=payment-service user_id=51 amount=7990 currency=RUB provider=stripe payment_id=pay-7003 error=timeout
